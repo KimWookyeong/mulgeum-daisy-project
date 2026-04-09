@@ -4,8 +4,7 @@ import {
   getAuth, 
   signInAnonymously, 
   onAuthStateChanged, 
-  signOut,
-  signInWithCustomToken 
+  signOut 
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -53,8 +52,8 @@ const firebaseConfig = {
   databaseURL: "https://fourseason-run-and-map-default-rtdb.firebaseio.com/" 
 };
 
-// 물금동아 전용 데이터 경로 (appId) - 기존 사계절 데이터와 분리
-const appId = 'mulgeum-daisy-final';
+// 데이터 분리를 위한 물금동아 전용 ID
+const appId = 'mulgeum-daisy-final-project';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -73,14 +72,14 @@ const INITIAL_CENTER = [35.327, 129.007];
 
 // 데이지 꽃 글자 컴포넌트
 const DaisyLetter = ({ letter }) => (
-  <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', margin: '0 1px', verticalAlign: 'middle' }}>
+  <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', margin: '0 1px', verticalAlign: 'middle' }}>
     <svg viewBox="0 0 100 100" style={{ position: 'absolute', width: '100%', height: '100%', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))' }}>
       {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => (
         <ellipse key={angle} cx="50" cy="25" rx="12" ry="25" fill="white" transform={`rotate(${angle} 50 50)`} />
       ))}
       <circle cx="50" cy="50" r="18" fill="#fbbf24" />
     </svg>
-    <span style={{ position: 'relative', zIndex: 1, fontWeight: '900', fontSize: '12px', color: '#451a03', marginTop: '1px' }}>{letter}</span>
+    <span style={{ position: 'relative', zIndex: 1, fontWeight: '900', fontSize: '13px', color: '#451a03', marginTop: '1px' }}>{letter}</span>
   </div>
 );
 
@@ -145,36 +144,30 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  // Auth 초기화
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (e) { console.error("Auth init error:", e); }
+        await signInAnonymously(auth);
+      } catch (e) { console.error("Auth init error", e); }
     };
     initAuth();
     const unsubscribe = onAuthStateChanged(auth, setUser);
     return () => unsubscribe();
   }, []);
 
-  // 실시간 데이터 수신
   useEffect(() => {
     if (!user) return;
+    // RULE 1: Strict Paths 적용
     const reportsCollection = collection(db, 'artifacts', appId, 'public', 'data', 'reports');
     const unsubscribe = onSnapshot(reportsCollection, (snapshot) => {
       const formatted = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         .sort((a, b) => new Date(b.discoveredTime).getTime() - new Date(a.discoveredTime).getTime());
       setReports(formatted);
       updateMarkers(formatted);
-    }, (err) => console.error(err));
+    });
     return () => unsubscribe();
   }, [user]);
 
-  // 지도 라이브러리 로드
   useEffect(() => {
     const link = document.createElement('link');
     link.rel = 'stylesheet'; link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
@@ -187,7 +180,6 @@ export default function App() {
     return () => { if (leafletMap.current) leafletMap.current.remove(); };
   }, []);
 
-  // 지도 초기화 및 크기 보정
   useEffect(() => {
     if (isScriptLoaded && !isSettingNickname && activeTab === 'map' && mapContainerRef.current) {
       if (!leafletMap.current) {
@@ -278,7 +270,7 @@ export default function App() {
       });
       setFormData({ category: 'cup', area: AREAS[0], description: '', status: 'pending', customLocation: null, image: null });
       setActiveTab('map');
-      alert("기록이 업로드되었습니다! 🌼");
+      alert("지도에 업로드되었습니다! 🌼");
     } catch (err) {
       alert("업로드 실패!");
     } finally {
@@ -323,11 +315,10 @@ export default function App() {
           </div>
           <h1 style={{ fontSize: '2.5rem', fontWeight: '900', color: '#92400e', margin: '0 0 16px 0', letterSpacing: '-0.02em' }}>물금동아</h1>
           
-          {/* 한 줄 정렬 레이아웃 */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-            <DaisyLetter letter="데" /><span style={{ fontSize: '11px', fontWeight: '800', color: '#92400e', margin: '0 1px' }}>이터를</span>
-            <DaisyLetter letter="이" /><span style={{ fontSize: '11px', fontWeight: '800', color: '#92400e', margin: '0 1px' }}>용한</span>
-            <DaisyLetter letter="지" /><span style={{ fontSize: '11px', fontWeight: '800', color: '#92400e', margin: '0 1px' }}>역 쓰레기 해결 프로젝트</span>
+            <DaisyLetter letter="데" /><span style={{ fontSize: '12px', fontWeight: '800', color: '#92400e', margin: '0 1px' }}>이터를</span>
+            <DaisyLetter letter="이" /><span style={{ fontSize: '12px', fontWeight: '800', color: '#92400e', margin: '0 1px' }}>용한</span>
+            <DaisyLetter letter="지" /><span style={{ fontSize: '12px', fontWeight: '800', color: '#92400e', margin: '0 1px' }}>역 쓰레기 해결 프로젝트</span>
           </div>
         </div>
         
@@ -418,7 +409,7 @@ export default function App() {
                 ))}
               </div>
               <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="어떤 상황인가요?" style={{ width: '100%', padding: '20px', borderRadius: '24px', border: '2px solid #fde68a', background: 'white', minHeight: '100px', fontSize: '14px', outline: 'none', color: '#78350f' }} />
-              <button disabled={isUploading} style={{ backgroundColor: isUploading ? '#d1d5db' : '#fbbf24', color: 'white', border: 'none', padding: '20px', borderRadius: '24px', fontWeight: '900', fontSize: '1.1rem', cursor: isUploading ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 4px 15px rgba(251,191,36,0.3)' }}>
+              <button disabled={isUploading} style={{ backgroundColor: isUploading ? '#d1d5db' : '#fbbf24', color: 'white', border: 'none', padding: '20px', borderRadius: '24px', fontWeight: '900', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 4px 15px rgba(251,191,36,0.3)' }}>
                 {isUploading ? <><Loader2 className="animate-spin" /> 업로드 중...</> : "지도에 업로드"}
               </button>
             </form>
